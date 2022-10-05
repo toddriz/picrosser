@@ -1,6 +1,6 @@
-import _ from "lodash";
+import _ from 'lodash';
 
-type Square = "_" | "X" | "▣";
+type Square = '_' | 'X' | '▣';
 
 export class RowHint {
   isSolved = false;
@@ -23,27 +23,19 @@ export class Board {
   rowCount: number;
   columnCount: number;
 
-  currentGrid: string[][] = [];
+  currentGrid: Square[][] = [];
 
   rowHints: RowHint[];
   columnHints: ColumnHint[];
 
   constructor(rowCount: number, columnCount: number, rowHints: RowHint[], columnHints: ColumnHint[]) {
-    // if (_.some(rowHints, (rowHint) => rowHint.hints.length !== rowCount)) {
-    //   throw "bad rowHints";
-    // }
-
-    // if (_.some(columnHints, (columnHint) => columnHint.hints.length !== columnCount)) {
-    //   throw "bad columnHints";
-    // }
-
     this.rowCount = rowCount;
     this.columnCount = columnCount;
 
     this.rowHints = rowHints;
     this.columnHints = columnHints;
 
-    this.currentGrid = _.fill(Array(this.rowCount), _.fill(Array(this.columnCount), "_"));
+    this.currentGrid = _.fill(Array(this.rowCount), _.fill(Array(this.columnCount), '_'));
   }
 
   isPotentiallySolved = () => {
@@ -54,7 +46,7 @@ export class Board {
     // console.log("expectedColumnBoxCount", expectedColumnBoxCount);
 
     const currentFilledBoxCount = this.currentGrid.reduce((filledCount, row) => {
-      return filledCount + _.sumBy(row, (square) => (square === "▣" ? 1 : 0));
+      return filledCount + _.sumBy(row, (square) => (square === '▣' ? 1 : 0));
     }, 0);
 
     // console.log("currentFilledBoxCount", currentFilledBoxCount);
@@ -76,7 +68,7 @@ export class Board {
 
         let contiguousSquares = rowToCheck.reduce(
           (acc: number[], square) => {
-            if (square === "▣") {
+            if (square === '▣') {
               acc[acc.length - 1] = ++acc[acc.length - 1];
             } else {
               acc.push(0);
@@ -107,7 +99,7 @@ export class Board {
 
         let contiguousSquares = columnToCheck.reduce(
           (acc: number[], square) => {
-            if (square === "▣") {
+            if (square === '▣') {
               acc[acc.length - 1] = ++acc[acc.length - 1];
             } else {
               acc.push(0);
@@ -132,32 +124,59 @@ export class Board {
   };
 
   solveRows() {
-    // TODO implement
+    this.currentGrid = this.currentGrid.map((row: Square[], rowIndex) => {
+      const updatedRow = [...row];
+
+      const rowHint = this.rowHints[rowIndex];
+
+      if (rowHint.isSolved) {
+        return updatedRow;
+      }
+
+      const leftAnchoredSquareIndexes = updatedRow
+        .map((square: Square, squareIndex: number) => {
+          const left = updatedRow[squareIndex - 1];
+
+          if (square === '▣' && !left) {
+            return squareIndex;
+          } else {
+            return -1;
+          }
+        })
+        .filter((squareIndex) => squareIndex !== -1)
+        .forEach((leftAnchorIndex) => {
+          const squaresInARow = this.rowHints[rowIndex].hints[0];
+
+          updatedRow.splice(0, squaresInARow, ..._.fill<Square>(Array(squaresInARow), '▣'));
+        });
+
+      return updatedRow;
+    });
   }
   solveColumns() {
     // TODO implement
   }
 
   solve = () => {
-    this.rowHints.forEach((rowHint, row) => {
+    this.rowHints.forEach((rowHint: RowHint, rowIndex) => {
       const isMaxedRow = _.sum(rowHint.hints) + (rowHint.hints.length - 1) === this.columnCount;
 
       if (isMaxedRow) {
-        this.currentGrid[row] = rowHint.hints
-          .map((hint) => {
-            return _.fill(Array(hint), "▣");
+        this.currentGrid[rowIndex] = rowHint.hints
+          .map((hint, _i) => {
+            return _.fill<Square>(Array(hint), '▣');
           })
-          .reduce((acc: string[], hintLine: string[]) => {
+          .reduce((acc: Square[], hintLine: Square[], _, currRow) => {
             acc.push(...hintLine);
 
             if (acc.length !== this.columnCount) {
-              acc.push("X");
+              acc.push('X');
             }
 
             return acc;
           }, []);
       } else if (rowHint.hints.length === 1 && rowHint.hints[0] === 0) {
-        this.currentGrid[row] = _.fill(Array(this.columnCount), "X");
+        this.currentGrid[rowIndex] = _.fill(Array(this.columnCount), 'X');
       }
     });
 
@@ -165,10 +184,23 @@ export class Board {
       const isMaxedColumn = _.sum(columnHint.hints) + (columnHint.hints.length - 1) === this.rowCount;
 
       if (isMaxedColumn) {
-        this.currentGrid = this.currentGrid.map((row) => {
-          return row.map((square, columnIndex) => {
-            if (square == "_" && column === columnIndex) {
-              return "▣";
+        const maxedColumn = columnHint.hints
+          .map((hint, _i) => {
+            return _.fill<Square>(Array(hint), '▣');
+          })
+          .reduce((acc: Square[], hintLine: Square[]) => {
+            acc.push(...hintLine);
+
+            if (acc.length !== this.rowCount) {
+              acc.push('X');
+            }
+
+            return acc;
+          }, []);
+        this.currentGrid = this.currentGrid.map((row: Square[], rowIndex) => {
+          return row.map((square: Square, columnIndex) => {
+            if (square == '_' && column === columnIndex) {
+              return maxedColumn[rowIndex];
             }
 
             return square;
@@ -177,8 +209,8 @@ export class Board {
       } else if (columnHint.hints.length === 1 && columnHint.hints[0] === 0) {
         this.currentGrid = this.currentGrid.map((row) => {
           return row.map((square, columnIndex) => {
-            if (square == "_" && column === columnIndex) {
-              return "X";
+            if (square == '_' && column === columnIndex) {
+              return 'X';
             }
 
             return square;
@@ -191,8 +223,9 @@ export class Board {
     while (!this.isFullySolved()) {
       count++;
 
-      if (count > 1000) {
-        throw `not solved after ${count} iters`;
+      if (count > 1) {
+        console.log(`not solved after ${count} iters`);
+        return;
       }
 
       this.solveRows();
@@ -221,19 +254,16 @@ export class Board {
       return currentMax;
     }, 0);
 
-    // console.log("maxColumnHints", maxColumnHints);
-    // console.log("maxRowHints", maxRowHints);
-
     let topLine = maxColumnHints;
 
     while (topLine > 0) {
-      let columnString = `|${_.repeat(topLine === 1 ? "_" : " ", maxRowHints * 2 - 1)}|`;
+      let columnString = `|${_.repeat(topLine === 1 ? '_' : ' ', maxRowHints * 2 - 1)}|`;
 
       this.columnHints.forEach((columnHint: ColumnHint) => {
         if (columnHint.hints.length >= topLine) {
           columnString += `${columnHint.hints[columnHint.hints.length - topLine]} `;
         } else {
-          columnString += "  ";
+          columnString += '  ';
         }
       });
 
@@ -243,35 +273,38 @@ export class Board {
     }
 
     const rowStrings: string[] = this.rowHints.map((rowHint: RowHint, rowIndex) => {
-      let rowString = rowHint.hints.join(" ");
+      let rowString = rowHint.hints.join(' ');
 
-      rowString += "|";
+      rowString += '|';
 
-      rowString += this.currentGrid[rowIndex].join("|");
-      rowString += "|";
+      rowString += this.currentGrid[rowIndex].join('|');
+      rowString += '|';
 
-      return `|${_.padStart(rowString, lines[0].length - 1, " ")}`;
+      return `|${_.padStart(rowString, lines[0].length - 1, ' ')}`;
     });
 
-    lines.unshift(` ${_.repeat("_", lines[0].length - 2)}`);
+    lines.unshift(` ${_.repeat('_', lines[0].length - 2)}`);
     lines.push(...rowStrings);
 
-    console.log(lines.join("\n"));
+    console.log(lines.join('\n'));
   };
 
-  getResults = () => {
-    console.log("*----------------------before------------------------*");
-    this.print();
+  getResults = (isDebugOnly = false) => {
+    !isDebugOnly && console.log('*----------------------before------------------------*');
+    !isDebugOnly && this.print();
 
     this.solve();
 
-    console.log("this.rowHints", this.rowHints);
-    console.log("this.columnHints", this.columnHints);
+    (!this.isFullySolved() || !isDebugOnly) && console.log('*----------------------after------------------------*');
+    (!this.isFullySolved() || !isDebugOnly) && this.print();
 
-    console.log("*----------------------after------------------------*");
-    this.print();
+    !isDebugOnly && console.log('board.isPotentiallySolved()', this.isPotentiallySolved());
+    !isDebugOnly && console.log('board.isFullySolved()', this.isFullySolved());
 
-    console.log("board.isPotentiallySolved()", this.isPotentiallySolved());
-    console.log("board.isFullySolved()", this.isFullySolved());
+    if (isDebugOnly && !this.isFullySolved()) {
+      console.log('*----------------------board not solved------------------------*');
+    }
+
+    return this.isFullySolved();
   };
 }
